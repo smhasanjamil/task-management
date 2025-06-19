@@ -1,0 +1,202 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String                  @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String                  @unique
+  userName         String
+  email            String                  @unique
+  image            String?
+  isActive         Boolean                 @default(true)
+  password         String
+  role             UserRole
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  teams            UserAssignedTeam[]      @relation("UserTeams")
+  projects         UserAssignedProject[]   @relation("UserProjects")
+  uiProjects       ProjectUIMember[]
+  frontendProjects ProjectFrontendMember[]
+  backendProjects  ProjectBackendMember[]
+  payments         Payment[]
+  chatRooms        ChatRoomParticipant[]
+  messages         Message[]               @relation("UserMessages")
+}
+
+model Team {
+  id        String             @id @default(auto()) @map("_id") @db.ObjectId
+  teamName  String
+  members   UserAssignedTeam[] @relation("TeamMembers")
+  projects  Project[]          @relation("TeamProjects")
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  chatRooms ChatRoom[]         @relation("TeamChatRooms")
+}
+
+model UserAssignedTeam {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  teamId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [userId], name: "UserTeams")
+  team      Team     @relation(fields: [teamId], references: [id], name: "TeamMembers")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, teamId])
+}
+
+model Project {
+  id               String                  @id @default(auto()) @map("_id") @db.ObjectId
+  projectName      String
+  projectId        String                  @unique
+  station          String
+  deadline         DateTime
+  value            Float
+  teamId           String?                 @db.ObjectId
+  team             Team?                   @relation(fields: [teamId], references: [id], name: "TeamProjects")
+  estimateDelivery String?
+  projectStatus    ProjectStatus?
+  clientStatus     ClientStatus?
+  rating           Int?                    @default(0)
+  figmaLink        String?
+  liveLink         String?
+  deliveredDate    DateTime?
+  requirementsLink String?
+  note             String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  assignments      UserAssignedProject[]   @relation("ProjectAssignments")
+  uiMembers        ProjectUIMember[]
+  frontendMembers  ProjectFrontendMember[]
+  backendMembers   ProjectBackendMember[]
+  chatRooms        ChatRoom[]              @relation("ProjectChatRooms")
+}
+
+model ProjectUIMember {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String   @db.ObjectId
+  userId    String
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [userId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId])
+}
+
+model ProjectFrontendMember {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String   @db.ObjectId
+  userId    String
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [userId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId])
+}
+
+model ProjectBackendMember {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String   @db.ObjectId
+  userId    String
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [userId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId])
+}
+
+model UserAssignedProject {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  projectId String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [userId], name: "UserProjects")
+  project   Project  @relation(fields: [projectId], references: [id], name: "ProjectAssignments")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, projectId])
+}
+
+model Payment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  stripeSessionId String
+  productName     String
+  amount          Int
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+
+  //  Relation to User
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model ChatRoom {
+  id           String                @id @default(auto()) @map("_id") @db.ObjectId
+  name         String?
+  participants ChatRoomParticipant[]
+  messages     Message[]
+  projectId    String?               @db.ObjectId
+  project      Project?              @relation(fields: [projectId], references: [id], name: "ProjectChatRooms")
+  teamId       String?               @db.ObjectId
+  team         Team?                 @relation(fields: [teamId], references: [id], name: "TeamChatRooms")
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+}
+
+model ChatRoomParticipant {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  chatRoomId String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id])
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, chatRoomId])
+  @@index([userId])
+  @@index([chatRoomId])
+}
+
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  roomId    String   @db.ObjectId
+  senderId  String   @db.ObjectId
+  sender    User     @relation(fields: [senderId], references: [id], name: "UserMessages") // Named relation
+  room      ChatRoom @relation(fields: [roomId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ProjectStatus {
+  new
+  ui_ux
+  wip
+  qa
+  delivered
+  revision
+  cancelled
+}
+
+enum ClientStatus {
+  active
+  satisfied
+  neutral
+  dissatisfied
+  inactive
+}
+
+enum UserRole {
+  admin
+  leader
+  coleader
+  member
+}
