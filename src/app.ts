@@ -26,7 +26,7 @@ app.use(
       'http://localhost:3000',
       'http://localhost:3001',
        'https://task-pilot-client-eight.vercel.app',
-      'https://taskclient-nine.vercel.app/',
+      'https://taskclient-nine.vercel.app',
     ], 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
